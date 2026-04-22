@@ -1,0 +1,16 @@
+{
+  "name": "db",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.ts",
+  "dependencies": {
+    "drizzle-orm": "^0.30.0",
+    "postgres": "^3.4.0",
+    "pg": "^8.11.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.21.0",
+    "typescript": "5.4.x"
+  }
+}
