@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
 import { ZodError } from "zod";
-import { ExpressError } from "../lib/errors";
+import { AppError } from "../lib/errors";
 
 export const validateBody =
   <T extends z.ZodTypeAny>(schema: T) =>
@@ -11,7 +11,7 @@ export const validateBody =
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        next(new ExpressError(400, "Validation failed", "VALIDATION_ERROR", error.issues));
+        next(new AppError(400, "Validation failed", "VALIDATION_ERROR", error.issues));
         return;
       }
       next(error);
@@ -26,7 +26,7 @@ export const validateQuery =
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        next(new ExpressError(400, "Validation failed", "VALIDATION_ERROR", error.issues));
+        next(new AppError(400, "Validation failed", "VALIDATION_ERROR", error.issues));
         return;
       }
       next(error);
