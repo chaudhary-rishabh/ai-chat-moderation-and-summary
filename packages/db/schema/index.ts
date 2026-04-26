@@ -46,7 +46,6 @@ export type { User, NewUser } from "./users";
 
 export { refreshTokens } from "./refresh_tokens";
 export type { RefreshToken, NewRefreshToken } from "./refresh_tokens";
-
 // ─── 3. Rooms ────────────────────────────────────────────────────────────────
 
 export { rooms } from "./rooms";
