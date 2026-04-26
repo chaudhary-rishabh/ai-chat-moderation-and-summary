@@ -24,11 +24,11 @@ export const auditLog =
       .values({
         userId: req.user?.userId ?? null,
         event,
-        metadata: JSON.stringify(metadata ?? {}),
-        ip: req.ip,
+        metadata: metadata ?? {},
+        ipAddress: req.ip,
         userAgent: req.get("user-agent") ?? null,
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         logger.error({ error, event }, "audit_log_insert_failed");
       });
 
