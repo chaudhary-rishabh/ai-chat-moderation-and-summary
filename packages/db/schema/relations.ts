@@ -10,7 +10,7 @@
 
 import { relations } from "drizzle-orm";
 import { users } from "./users";
-import { refreshTokens } from "./refresh_token";
+import { refreshTokens } from "./refresh_tokens";
 import { rooms } from "./rooms";
 import { roomMembers } from "./room_members";
 import { messages } from "./messages";
