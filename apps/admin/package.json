@@ -28,7 +28,7 @@
     "tailwind-merge": "^2.2.0",
     "sonner": "^1.4.0",
     "ui": "workspace:*",
-    "types": "workspace:*",
+    "@repo/types": "workspace:*",
     "config": "workspace:*"
   },
   "devDependencies": {

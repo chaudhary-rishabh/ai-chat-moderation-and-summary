@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm --filter server exec npx tsc --noEmit)",
+      "Bash(timeout 5 pnpm --filter server exec tsx src/index.ts)",
+      "Bash(pnpm --filter server exec tsc --noEmit)",
+      "Bash(npx tsc *)",
+      "Bash(pnpm --filter server add ws @types/ws bullmq)",
+      "Bash(pnpm install *)",
+      "Bash(rm -rf \"c:/Users/Rishabh/Desktop/remote job prep/full-stack/projects/websocket/node_modules/.pnpm/bullmq@5.76.2\")",
+      "Bash(pnpm --filter server add ws @types/ws)",
+      "Bash(pnpm --filter server add bullmq)",
+      "Bash(pnpm --filter @repo/types add zod)"
+    ]
+  }
+}

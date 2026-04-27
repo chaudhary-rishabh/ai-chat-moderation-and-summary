@@ -7,7 +7,7 @@
 
 # testing
 /coverage
-
+claude.md
 # next.js
 /.next/
 /out/
@@ -104,6 +104,7 @@ web_modules/
 # dotenv environment variable files
 .env
 .env.*
+.env.local
 !.env.example
 
 # parcel-bundler cache (https://parceljs.org/)

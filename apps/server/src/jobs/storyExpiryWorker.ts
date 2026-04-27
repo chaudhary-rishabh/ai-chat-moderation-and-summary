@@ -18,7 +18,7 @@ export const initStoryExpiryWorker = (): void => {
     STORY_EXPIRY_QUEUE,
     async (job) => {
       const result = await expireStories();
-      logger.info({ expiredCount: result.rowCount ?? 0 }, "stories_expired");
+      logger.info({ expiredCount: result.length }, "stories_expired");
     },
     {
       connection: redis,

@@ -1,0 +1,16 @@
+{
+  "extends": "../../packages/config/tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "types": ["node"],
+    "paths": {
+      "types/src": ["../../packages/types/src/index.ts"],
+      "types/src/*": ["../../packages/types/src/*"],
+      "db/src": ["../../packages/db/src/index.ts"],
+      "db/src/*": ["../../packages/db/src/*"],
+      "db/queries": ["../../packages/db/queries/index.ts"],
+      "db/queries/*": ["../../packages/db/queries/*"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}
