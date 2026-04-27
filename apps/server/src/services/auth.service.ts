@@ -2,11 +2,12 @@ import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import { db, users } from "db/src";
 import { eq, and, gt } from "drizzle-orm";
-import { AppError } from "../lib/errors";
+import { AppError, ConflictError, UnauthorizedError, ForbiddenError, NotFoundError } from "../lib/errors";
 import { env } from "../lib/env";
 import { sendPasswordResetEmail } from "../lib/email";
 import { hashString } from "../lib/crypto";
-import { issueTokenPair, rotateRefreshToken, revokeRefreshToken, revokeAllUserTokens } from "./token.service";
+import { issueTokenPair, rotateRefreshToken, revokeRefreshToken, revokeAllForUser } from "./token.service";
+import { getUserByEmail, createUser, setPasswordReset, clearPasswordReset } from "db/queries";
 
 const toUserResponse = (user: typeof users.$inferSelect) => ({
   id: user.id,
@@ -19,45 +20,41 @@ const toUserResponse = (user: typeof users.$inferSelect) => ({
   createdAt: user.createdAt,
 });
 
-export const register = async (input: { name: string; email: string; password: string }) => {
-  const existing = await db.query.users.findFirst({ where: eq(users.email, input.email) });
-  if (existing) throw new AppError(409, "Email already in use", "EMAIL_TAKEN");
+export const register = async (input: { name: string; email: string; password: string }, ip?: string, userAgent?: string) => {
+  const existing = await getUserByEmail(input.email);
+  if (existing) throw new ConflictError("Email already in use", "EMAIL_TAKEN");
 
   const passwordHash = await bcrypt.hash(input.password, 12);
-  const [created] = await db
-    .insert(users)
-    .values({ name: input.name, email: input.email, passwordHash, role: "user" })
-    .returning();
+  const [created] = await createUser({ name: input.name, email: input.email, passwordHash, role: "user" });
 
   if (!created) throw new AppError(500, "Failed to create user");
-  const tokens = await issueTokenPair(created.id, created.role);
+  const tokens = await issueTokenPair(created.id, created.role, ip, userAgent);
   return { user: toUserResponse(created), ...tokens };
 };
 
-export const login = async (input: { email: string; password: string }) => {
-  const user = await db.query.users.findFirst({ where: eq(users.email, input.email) });
-  if (!user) throw new AppError(401, "Invalid email or password", "INVALID_CREDENTIALS");
+export const login = async (input: { email: string; password: string }, ip?: string, userAgent?: string) => {
+  const user = await getUserByEmail(input.email);
+  if (!user) throw new UnauthorizedError("Invalid email or password", "INVALID_CREDENTIALS");
 
   const ok = await bcrypt.compare(input.password, user.passwordHash);
-  if (!ok) throw new AppError(401, "Invalid email or password", "INVALID_CREDENTIALS");
+  if (!ok) throw new UnauthorizedError("Invalid email or password", "INVALID_CREDENTIALS");
 
-  if (!user.isActive) throw new AppError(403, "Account is deactivated", "ACCOUNT_DEACTIVATED");
+  if (!user.isActive) throw new ForbiddenError("Account is deactivated", "ACCOUNT_DEACTIVATED");
 
-  const tokens = await issueTokenPair(user.id, user.role);
+  const tokens = await issueTokenPair(user.id, user.role, ip, userAgent);
   return { user: toUserResponse(user), ...tokens };
 };
 
-export const refresh = async (input: { refreshToken: string }) => {
-  const result = await rotateRefreshToken(input.refreshToken);
-  return result;
+export const refresh = async (refreshToken: string, ip?: string, userAgent?: string) => {
+  return rotateRefreshToken(refreshToken, ip, userAgent);
 };
 
-export const logout = async (userId: string, refreshToken: string) => {
+export const logout = async (refreshToken: string, userId: string) => {
   await revokeRefreshToken(refreshToken, userId);
 };
 
-export const forgotPassword = async (input: { email: string }) => {
-  const user = await db.query.users.findFirst({ where: eq(users.email, input.email) });
+export const forgotPassword = async (email: string) => {
+  const user = await getUserByEmail(email);
   let userId: string | null = null;
 
   if (user && user.isActive) {
@@ -65,11 +62,8 @@ export const forgotPassword = async (input: { email: string }) => {
     const resetToken = crypto.randomBytes(32).toString("hex");
     const tokenHash = hashString(resetToken);
     const expires = new Date(Date.now() + env.PASSWORD_RESET_EXPIRY_MINUTES * 60 * 1000);
-    await db
-      .update(users)
-      .set({ passwordResetToken: tokenHash, passwordResetExpires: expires })
-      .where(eq(users.id, user.id));
-    await sendPasswordResetEmail(input.email, resetToken, user.name);
+    await setPasswordReset(user.id, tokenHash, expires);
+    await sendPasswordResetEmail(email, resetToken, user.name);
   }
 
   return { message: "If that email exists, we sent a reset link", userId };
@@ -77,15 +71,17 @@ export const forgotPassword = async (input: { email: string }) => {
 
 export const resetPassword = async (input: { token: string; email: string; newPassword: string }) => {
   const tokenHash = hashString(input.token);
-  const user = await db.query.users.findFirst({
-    where: and(
-      eq(users.email, input.email),
-      eq(users.passwordResetToken, tokenHash),
-      gt(users.passwordResetExpires, new Date()),
-    ),
-  });
+  const user = await getUserByEmail(input.email);
 
-  if (!user) throw new AppError(400, "Invalid or expired token", "TOKEN_INVALID");
+  if (
+    !user ||
+    !user.passwordResetToken ||
+    !user.passwordResetExpires ||
+    user.passwordResetToken !== tokenHash ||
+    user.passwordResetExpires < new Date()
+  ) {
+    throw new UnauthorizedError("Invalid or expired token", "TOKEN_INVALID");
+  }
 
   const passwordHash = await bcrypt.hash(input.newPassword, 12);
   await db
@@ -93,6 +89,6 @@ export const resetPassword = async (input: { token: string; email: string; newPa
     .set({ passwordHash, passwordResetToken: null, passwordResetExpires: null })
     .where(eq(users.id, user.id));
 
-  await revokeAllUserTokens(user.id);
+  await revokeAllForUser(user.id);
   return { message: "Password reset successfully", userId: user.id };
 };
