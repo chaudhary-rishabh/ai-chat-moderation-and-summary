@@ -6,7 +6,7 @@ import {
   RefreshSchema,
   RegisterSchema,
   ResetPasswordSchema,
-} from "../../../../packages/types/src/auth";
+} from "types/src/auth";
 import * as authController from "../controllers/auth.controller";
 import { verifyToken } from "../middleware/auth";
 import { authLimiter } from "../middleware/rateLimiter";
