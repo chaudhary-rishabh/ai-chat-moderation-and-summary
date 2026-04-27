@@ -2,6 +2,7 @@ import { Queue, Worker } from "bullmq";
 import { redis } from "../lib/redis";
 import { db, safetyFlags, messages } from "db/src";
 import { eq } from "drizzle-orm";
+import { classifyMessage } from "../ai/safety";
 import { roomManager } from "../ws/roomManager";
 import { logger } from "../lib/logger";
 import { setQueue } from "./queue";
@@ -24,56 +25,17 @@ export const initSafetyWorker = (): void => {
 
       if (!content || content.trim().length === 0) return;
 
-      const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY ?? ""}`,
-        },
-        body: JSON.stringify({
-          model: "deepseek-reasoner",
-          messages: [
-            {
-              role: "system",
-              content: `You are a content safety classifier. Analyze the message and classify it.
-Return ONLY a JSON object with this exact format:
-{
-  "flagType": "abuse" | "bullying" | "harassment" | "hate_speech" | "spam" | "self_harm" | "other" | "safe",
-  "confidenceScore": <number 0.0-1.0>,
-  "reasoning": "<one sentence explanation>",
-  "offendingSpan": "<exact text that triggered the flag, or null if safe>"
-}`,
-            },
-            { role: "user", content },
-          ],
-          temperature: 0,
-          max_tokens: 300,
-        }),
-      });
+      const result = await classifyMessage(content);
 
-      if (!response.ok) {
-        logger.error({ status: response.status, messageId }, "safety_api_error");
-        return;
-      }
-
-      const json = (await response.json()) as { choices: { message: { content: string } }[] };
-      const rawContent = json.choices?.[0]?.message?.content ?? "";
-      const parsed = JSON.parse(rawContent) as {
-        flagType: string;
-        confidenceScore: number;
-        reasoning: string;
-        offendingSpan: string | null;
-      };
-
-      if (parsed.flagType === "safe" || parsed.confidenceScore <= 0.7) return;
+      if (result.flagType === "safe" || result.confidenceScore <= 0.7) return;
 
       // Insert safety flag
       await db.insert(safetyFlags).values({
         messageId,
-        flagType: parsed.flagType as any,
-        confidenceScore: parsed.confidenceScore,
-        reasoning: parsed.reasoning ?? null,
-        offendingSpan: parsed.offendingSpan ?? null,
+        flagType: result.flagType as any,
+        confidenceScore: result.confidenceScore,
+        reasoning: result.reasoning ?? null,
+        offendingSpan: result.offendingSpan ?? null,
         status: "pending",
       });
 
@@ -87,13 +49,16 @@ Return ONLY a JSON object with this exact format:
           messageId,
           roomId,
           senderId,
-          flagType: parsed.flagType,
-          confidenceScore: parsed.confidenceScore,
-          offendingSpan: parsed.offendingSpan,
+          flagType: result.flagType,
+          confidenceScore: result.confidenceScore,
+          offendingSpan: result.offendingSpan,
         },
       });
 
-      logger.info({ messageId, flagType: parsed.flagType, confidenceScore: parsed.confidenceScore }, "safety_flag_created");
+      logger.info(
+        { messageId, flagType: result.flagType, confidenceScore: result.confidenceScore },
+        "safety_flag_created",
+      );
     },
     {
       connection: redis,

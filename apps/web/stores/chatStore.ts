@@ -1,44 +1,10 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
+import type { ChatMessage, ChatRoom, TypingUser } from "@/types/chat.types";
 
-export interface ChatMessage {
-  id: string;
-  roomId: string;
-  sender: { id: string; name: string; avatarUrl: string | null };
-  type: string;
-  content: string | null;
-  mediaUrl: string | null;
-  threadParentId: string | null;
-  createdAt: string;
-  isDeleted?: boolean;
-  isFlagged?: boolean;
-}
-
-export interface ChatRoom {
-  id: string;
-  type: "dm" | "group" | "channel";
-  name: string | null;
-  description: string | null;
-  avatarUrl: string | null;
-  createdBy: string;
-  isArchived: boolean;
-  createdAt: string;
-  updatedAt: string;
-  members: Array<{
-    id: string;
-    role: string;
-    userId: string;
-    user: { id: string; name: string; email: string; avatarUrl: string | null; role: string; lastSeenAt: string | null };
-  }>;
-  messages?: Array<{ content: string; createdAt: string; senderId: string }>;
-  unreadCount?: number;
-}
-
-interface TypingUser {
-  userId: string;
-  userName: string;
-  roomId: string;
-  isTyping: boolean;
+interface PresenceInfo {
+  status: "online" | "offline";
+  lastSeenAt?: string;
 }
 
 interface ChatState {
@@ -46,8 +12,9 @@ interface ChatState {
   activeRoomId: string | null;
   messages: Record<string, ChatMessage[]>;
   typingUsers: TypingUser[];
-  onlineUsers: Set<string>;
-  // Actions
+  presence: Map<string, PresenceInfo>;
+  threadParentId: string | null;
+
   setRooms: (rooms: ChatRoom[]) => void;
   setActiveRoom: (roomId: string | null) => void;
   addMessage: (roomId: string, message: ChatMessage) => void;
@@ -55,8 +22,10 @@ interface ChatState {
   prependMessages: (roomId: string, messages: ChatMessage[]) => void;
   deleteMessage: (roomId: string, messageId: string) => void;
   setTyping: (roomId: string, userId: string, userName: string, isTyping: boolean) => void;
-  setOnline: (userId: string, online: boolean) => void;
-  getTypingUsers: (roomId: string) => TypingUser[];
+  setPresence: (userId: string, info: PresenceInfo) => void;
+  setThreadParent: (messageId: string | null) => void;
+  getOnlineUsers: () => Set<string>;
+  getTypingInRoom: (roomId: string) => TypingUser[];
 }
 
 export const useChatStore = create<ChatState>()(
@@ -65,18 +34,24 @@ export const useChatStore = create<ChatState>()(
     activeRoomId: null,
     messages: {},
     typingUsers: [],
-    onlineUsers: new Set<string>(),
+    presence: new Map(),
+    threadParentId: null,
 
-    setRooms: (rooms) => set((s) => { s.rooms = rooms; }),
+    setRooms: (rooms) =>
+      set((s) => {
+        s.rooms = rooms;
+      }),
 
-    setActiveRoom: (roomId) => set((s) => { s.activeRoomId = roomId; }),
+    setActiveRoom: (roomId) =>
+      set((s) => {
+        s.activeRoomId = roomId;
+      }),
 
     addMessage: (roomId, message) =>
       set((s) => {
-        if (!s.messages[roomId]) s.messages[roomId] = [];
-        // Avoid duplicates
-        const exists = s.messages[roomId].some((m) => m.id === message.id);
-        if (!exists) s.messages[roomId].push(message);
+        const arr = s.messages[roomId];
+        if (!arr) { s.messages[roomId] = [message]; return; }
+        if (!arr.some((m) => m.id === message.id)) arr.push(message);
       }),
 
     setMessages: (roomId, messages) =>
@@ -86,10 +61,11 @@ export const useChatStore = create<ChatState>()(
 
     prependMessages: (roomId, messages) =>
       set((s) => {
-        if (!s.messages[roomId]) s.messages[roomId] = [];
-        const existingIds = new Set(s.messages[roomId].map((m) => m.id));
+        const existing = s.messages[roomId];
+        if (!existing) { s.messages[roomId] = messages; return; }
+        const existingIds = new Set(existing.map((m) => m.id));
         const newMsgs = messages.filter((m) => !existingIds.has(m.id));
-        s.messages[roomId] = [...newMsgs, ...s.messages[roomId]];
+        s.messages[roomId] = [...newMsgs, ...existing];
       }),
 
     deleteMessage: (roomId, messageId) =>
@@ -104,7 +80,9 @@ export const useChatStore = create<ChatState>()(
     setTyping: (roomId, userId, userName, isTyping) =>
       set((s) => {
         if (isTyping) {
-          const exists = s.typingUsers.find((t) => t.userId === userId && t.roomId === roomId);
+          const exists = s.typingUsers.find(
+            (t) => t.userId === userId && t.roomId === roomId,
+          );
           if (!exists) s.typingUsers.push({ userId, userName, roomId, isTyping });
         } else {
           s.typingUsers = s.typingUsers.filter(
@@ -113,12 +91,28 @@ export const useChatStore = create<ChatState>()(
         }
       }),
 
-    setOnline: (userId, online) =>
+    setPresence: (userId, info) =>
       set((s) => {
-        if (online) s.onlineUsers.add(userId);
-        else s.onlineUsers.delete(userId);
+        (s.presence as Map<string, PresenceInfo>).set(userId, info);
       }),
 
-    getTypingUsers: (roomId) => get().typingUsers.filter((t) => t.roomId === roomId && t.isTyping),
+    setThreadParent: (messageId) =>
+      set((s) => {
+        s.threadParentId = messageId;
+      }),
+
+    getOnlineUsers: () => {
+      const online = new Set<string>();
+      const p = get().presence;
+      if (p) {
+        p.forEach((info, userId) => {
+          if (info.status === "online") online.add(userId);
+        });
+      }
+      return online;
+    },
+
+    getTypingInRoom: (roomId) =>
+      get().typingUsers.filter((t) => t.roomId === roomId && t.isTyping),
   })),
 );

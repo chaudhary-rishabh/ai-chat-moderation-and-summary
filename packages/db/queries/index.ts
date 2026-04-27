@@ -5,3 +5,6 @@ export * from "./messages.queries";
 export * from "./reactions.queries";
 export * from "./stories.queries";
 export * from "./threads.queries";
+export * from "./embeddings.queries";
+export * from "./ai-sessions.queries";
+export * from "./summaries.queries";

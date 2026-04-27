@@ -1,80 +1,76 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useChatStore } from "@/stores/chatStore";
 import type { ServerToClientEvent } from "@repo/types/ws-events";
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
-export function useWebSocket() {
-  const { data: session } = useSession();
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectRef = useRef<NodeJS.Timeout | null>(null);
-  const [status, setStatus] = useState<ConnectionStatus>("disconnected");
-  const store = useChatStore();
+let ws: WebSocket | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectAttempt = 0;
+const MAX_BACKOFF = 30_000;
 
-  const connect = useCallback(() => {
-    if (!session?.accessToken) return;
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
-
-    setStatus("connecting");
-
-    const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL?.replace(/^http/, "ws") ?? "ws://localhost:4000";
-    const ws = new WebSocket(`${serverUrl}?token=${session.accessToken}`);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      setStatus("connected");
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const evt = JSON.parse(event.data) as ServerToClientEvent;
-        handleEvent(evt, store);
-      } catch {
-        // Ignore parse errors
-      }
-    };
-
-    ws.onclose = () => {
-      setStatus("disconnected");
-      wsRef.current = null;
-      // Auto-reconnect after 3 seconds
-      reconnectRef.current = setTimeout(connect, 3000);
-    };
-
-    ws.onerror = () => {
-      ws.close();
-    };
-  }, [session?.accessToken, store]);
-
-  const disconnect = useCallback(() => {
-    if (reconnectRef.current) clearTimeout(reconnectRef.current);
-    wsRef.current?.close();
-    wsRef.current = null;
-    setStatus("disconnected");
-  }, []);
-
-  useEffect(() => {
-    if (session?.accessToken) {
-      connect();
-    }
-    return () => {
-      disconnect();
-    };
-  }, [session?.accessToken, connect, disconnect]);
-
-  const send = useCallback((type: string, payload: unknown) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type, payload }));
-    }
-  }, []);
-
-  return { status, send, connect, disconnect };
+function getWsUrl(token: string) {
+  const base = (process.env.NEXT_PUBLIC_SERVER_URL ?? "http://localhost:4000").replace(/^http/, "ws");
+  return `${base}?token=${token}`;
 }
 
-function handleEvent(event: ServerToClientEvent, store: ReturnType<typeof useChatStore.getState>) {
+function connect(token: string): WebSocket {
+  if (ws?.readyState === WebSocket.OPEN) return ws;
+
+  const socket = new WebSocket(getWsUrl(token));
+  ws = socket;
+
+  socket.onopen = () => {
+    reconnectAttempt = 0;
+    notifyStatus("connected");
+  };
+
+  socket.onmessage = (event) => {
+    try {
+      const evt = JSON.parse(event.data) as ServerToClientEvent;
+      handleEvent(evt);
+    } catch {
+      // ignore parse errors
+    }
+  };
+
+  socket.onclose = () => {
+    notifyStatus("disconnected");
+    ws = null;
+    scheduleReconnect(token);
+  };
+
+  socket.onerror = () => {
+    socket.close();
+  };
+
+  return socket;
+}
+
+function scheduleReconnect(token: string) {
+  if (reconnectTimer) return;
+  const delay = Math.min(1000 * Math.pow(2, reconnectAttempt), MAX_BACKOFF);
+  reconnectAttempt++;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connect(token);
+  }, delay);
+}
+
+// Simple event emitter for status changes
+const statusListeners = new Set<(s: ConnectionStatus) => void>();
+let currentStatus: ConnectionStatus = "disconnected";
+
+function notifyStatus(s: ConnectionStatus) {
+  currentStatus = s;
+  statusListeners.forEach((fn) => fn(s));
+}
+
+function handleEvent(event: ServerToClientEvent) {
+  const store = useChatStore.getState();
   switch (event.type) {
     case "msg:new":
       store.addMessage(event.payload.message.roomId, event.payload.message);
@@ -91,13 +87,53 @@ function handleEvent(event: ServerToClientEvent, store: ReturnType<typeof useCha
       );
       break;
     case "presence:update":
-      store.setOnline(event.payload.userId, event.payload.status === "online");
+      store.setPresence(event.payload.userId, {
+        status: event.payload.status,
+        lastSeenAt: event.payload.lastSeenAt,
+      });
       break;
     case "reaction:update":
-      // Reactions are handled via the message object's reactions array
+      // Reactions are handled within the message object
       break;
     case "safety:alert":
-      // Safety alerts are admin-only; handled separately
+      // Admin-only; handled elsewhere
       break;
   }
+}
+
+export function useWebSocket() {
+  const { data: session } = useSession();
+  const [status, setStatus] = useState<ConnectionStatus>(currentStatus);
+  const pingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    statusListeners.add(setStatus);
+    return () => {
+      statusListeners.delete(setStatus);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!session?.accessToken) return;
+
+    const socket = connect(session.accessToken);
+
+    pingRef.current = setInterval(() => {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: "presence:ping", payload: {} }));
+      }
+    }, 25_000);
+
+    return () => {
+      if (pingRef.current) clearInterval(pingRef.current);
+    };
+  }, [session?.accessToken]);
+
+  const send = useCallback((type: string, payload: unknown) => {
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type, payload }));
+    }
+  }, []);
+
+  return { status, send };
 }

@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import api from "@/lib/axios";
-import { RegisterSchema } from "types/src";
+import { RegisterSchema } from "@repo/types/auth";
 
 const schema = RegisterSchema.extend({
   confirmPassword: z.string(),
-}).refine((v) => v.password === v.confirmPassword, {
+}).refine((v: { password: string; confirmPassword: string }) => v.password === v.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
 });

@@ -1,7 +1,7 @@
 import { Queue, Worker } from "bullmq";
 import { redis } from "../lib/redis";
-import { db, embeddings } from "db/src";
-import { getMessageById } from "db/queries";
+import { generateEmbedding } from "../ai/rag/embed";
+import { insertEmbedding } from "db/queries";
 import { logger } from "../lib/logger";
 import { setQueue } from "./queue";
 
@@ -18,44 +18,16 @@ export const initEmbedWorker = (): void => {
 
       if (!content || content.trim().length === 0) return;
 
-      const message = await getMessageById(messageId);
-      if (!message) {
-        logger.warn({ messageId }, "embed_message_not_found");
-        return;
+      try {
+        const embedding = await generateEmbedding(content);
+
+        await insertEmbedding(messageId, embedding, "deepseek-v3");
+
+        logger.info({ messageId }, "embed_generated");
+      } catch (err) {
+        logger.error({ err, messageId }, "embed_job_failed");
+        throw err;
       }
-
-      // Call DeepSeek embedding endpoint (OpenAI-compatible)
-      const response = await fetch("https://api.deepseek.com/v1/embeddings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY ?? ""}`,
-        },
-        body: JSON.stringify({
-          model: "deepseek-chat",
-          input: content,
-        }),
-      });
-
-      if (!response.ok) {
-        logger.error({ status: response.status, messageId }, "embed_api_error");
-        return;
-      }
-
-      const json = (await response.json()) as { data: { embedding: number[] }[] };
-      const embedding = json.data?.[0]?.embedding;
-      if (!embedding) {
-        logger.error({ messageId }, "embed_empty_response");
-        return;
-      }
-
-      await db.insert(embeddings).values({
-        messageId,
-        embedding: embedding as any,
-        modelVersion: "deepseek-v3",
-      });
-
-      logger.info({ messageId }, "embed_generated");
     },
     {
       connection: redis,

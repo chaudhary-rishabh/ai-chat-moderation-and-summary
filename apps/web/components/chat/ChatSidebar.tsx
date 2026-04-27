@@ -1,65 +1,85 @@
 "use client";
 
-import { useChatStore, type ChatRoom } from "@/stores/chatStore";
+import { useChatStore } from "@/stores/chatStore";
 import { useUIStore } from "@/stores/uiStore";
 import { usePresence } from "@/hooks/usePresence";
-import { Search, Hash, Users, MessageSquare, PanelLeftClose, Plus } from "lucide-react";
+import {
+  Search,
+  Hash,
+  Users,
+  MessageSquare,
+  PanelLeftClose,
+  Plus,
+  Sparkles,
+  Compass,
+} from "lucide-react";
+import { cn } from "@/utils/cn";
+import type { ChatRoom } from "@/types/chat.types";
 
 export function ChatSidebar() {
   const rooms = useChatStore((s) => s.rooms);
   const activeRoomId = useChatStore((s) => s.activeRoomId);
   const setActiveRoom = useChatStore((s) => s.setActiveRoom);
-  const onlineUsers = useChatStore((s) => s.onlineUsers);
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
   const searchQuery = useUIStore((s) => s.searchQuery);
   const setSearchQuery = useUIStore((s) => s.setSearchQuery);
-  usePresence();
+  const setPanelMode = useUIStore((s) => s.setPanelMode);
+  const toggleAIPanel = useUIStore((s) => s.toggleAIPanel);
+  const { isOnline } = usePresence();
 
   const filteredRooms = searchQuery
-    ? rooms.filter((r) => r.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? rooms.filter((r) => {
+        const name = r.name ?? r.members.map((m) => m.user.name).join(", ");
+        return name.toLowerCase().includes(searchQuery.toLowerCase());
+      })
     : rooms;
 
-  if (!sidebarOpen) {
-    return null;
-  }
+  if (!sidebarOpen) return null;
 
   return (
-    <aside className="w-80 h-full glass border-r-0 rounded-r-2xl flex flex-col shrink-0">
+    <aside className="w-80 h-full glass rounded-r-3xl flex flex-col shrink-0 z-10">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
-        <h1 className="text-lg font-semibold tracking-tight">Chats</h1>
+      <div className="px-5 py-4 flex items-center justify-between">
+        <h1 className="text-base font-semibold text-ink tracking-tight">Chats</h1>
         <div className="flex items-center gap-1">
-          <button className="p-1.5 rounded-lg hover:bg-white/10 transition">
-            <Plus className="w-4 h-4 text-white/70" />
+          <button
+            onClick={toggleAIPanel}
+            className="p-1.5 rounded-lg hover:bg-white/18 transition"
+            title="AI Assistant"
+          >
+            <Sparkles className="w-4 h-4 text-ai-accent" />
+          </button>
+          <button className="p-1.5 rounded-lg hover:bg-white/18 transition">
+            <Plus className="w-4 h-4 text-ink-soft" />
           </button>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="p-1.5 rounded-lg hover:bg-white/10 transition"
+            className="p-1.5 rounded-lg hover:bg-white/18 transition"
           >
-            <PanelLeftClose className="w-4 h-4 text-white/70" />
+            <PanelLeftClose className="w-4 h-4 text-ink-soft" />
           </button>
         </div>
       </div>
 
       {/* Search */}
-      <div className="px-4 py-3">
+      <div className="px-4 pb-3">
         <div className="glass-input rounded-xl px-3 py-2 flex items-center gap-2">
-          <Search className="w-4 h-4 text-white/40 shrink-0" />
+          <Search className="w-4 h-4 text-ink-faint shrink-0" />
           <input
             type="text"
-            placeholder="Search rooms..."
+            placeholder="Search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-transparent text-sm text-white placeholder-white/30 outline-none w-full"
+            className="bg-transparent text-sm text-ink placeholder:text-ink-faint outline-none w-full"
           />
         </div>
       </div>
 
       {/* Room list */}
-      <div className="flex-1 overflow-y-auto px-3 py-1">
+      <div className="flex-1 overflow-y-auto px-3 py-1 scrollbar-thin">
         {filteredRooms.length === 0 ? (
-          <div className="text-center text-white/30 text-sm mt-12">
+          <div className="text-center text-ink-faint text-sm mt-12">
             <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40" />
             <p>{searchQuery ? "No rooms found" : "No conversations yet"}</p>
           </div>
@@ -69,16 +89,36 @@ export function ChatSidebar() {
               key={room.id}
               room={room}
               isActive={room.id === activeRoomId}
-              onClick={() => setActiveRoom(room.id)}
-              isOnline={room.type === "dm" && room.members.some((m) => onlineUsers.has(m.userId))}
+              onClick={() => {
+                setActiveRoom(room.id);
+                setPanelMode("chat");
+              }}
+              isOnline={
+                room.type === "dm" &&
+                room.members.some((m) => isOnline(m.userId))
+              }
             />
           ))
         )}
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-3 border-t border-white/10 text-xs text-white/40">
-        {onlineUsers.size} online
+      <div className="px-5 py-3 border-t border-white/10 flex items-center justify-between text-xs text-ink-faint">
+        <button
+          onClick={() => setPanelMode("ai")}
+          className="flex items-center gap-1.5 hover:text-ai-accent transition"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>AI</span>
+        </button>
+        <button
+          onClick={() => setPanelMode("summary")}
+          className="flex items-center gap-1.5 hover:text-summary-accent transition"
+        >
+          <Compass className="w-3.5 h-3.5" />
+          <span>Summarize</span>
+        </button>
+        <span>{rooms.length} conversations</span>
       </div>
     </aside>
   );
@@ -109,16 +149,22 @@ function RoomCard({
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left px-3 py-2.5 rounded-xl mb-1 transition-all duration-150 flex items-center gap-3 ${
+      className={cn(
+        "w-full text-left px-3 py-2.5 rounded-[14px] mb-1 transition-all duration-150 flex items-center gap-3",
+        "hover:bg-white/10",
         isActive
-          ? "bg-white/20 border border-white/25"
-          : "hover:bg-white/8 border border-transparent"
-      }`}
+          ? "bg-white/20 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.32)]"
+          : "border border-transparent",
+      )}
     >
       <div className="relative shrink-0">
-        <div className="w-10 h-10 rounded-xl glass-subtle flex items-center justify-center text-white/60">
+        <div className="w-10 h-10 rounded-xl glass-soft flex items-center justify-center text-ink-soft">
           {room.avatarUrl ? (
-            <img src={room.avatarUrl} alt="" className="w-10 h-10 rounded-xl object-cover" />
+            <img
+              src={room.avatarUrl}
+              alt=""
+              className="w-10 h-10 rounded-xl object-cover"
+            />
           ) : (
             icon
           )}
@@ -130,15 +176,18 @@ function RoomCard({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium truncate text-white/90">{name}</span>
+          <span className="text-sm font-medium truncate text-ink">{name}</span>
           {lastMsg && (
-            <span className="text-[10px] text-white/35 shrink-0 ml-2">
-              {new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            <span className="text-[10px] text-ink-faint shrink-0 ml-2">
+              {new Date(lastMsg.createdAt).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </span>
           )}
         </div>
         <div className="flex items-center justify-between mt-0.5">
-          <span className="text-xs text-white/40 truncate">
+          <span className="text-xs text-ink-soft truncate">
             {lastMsg?.content ?? "No messages yet"}
           </span>
           {(room.unreadCount ?? 0) > 0 && (

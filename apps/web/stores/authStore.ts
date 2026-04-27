@@ -3,7 +3,7 @@
 import { produce } from "immer";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { UserPublic } from "types/src";
+import type { UserPublic } from "@repo/types/auth";
 
 type AuthState = {
   user: UserPublic | null;

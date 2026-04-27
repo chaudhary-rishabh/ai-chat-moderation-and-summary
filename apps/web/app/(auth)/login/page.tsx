@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { LoginSchema, type LoginInput } from "types/src";
+import { LoginSchema, type LoginInput } from "@repo/types/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,7 +22,7 @@ export default function LoginPage() {
     <motion.main initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mx-auto mt-20 max-w-md">
       <form
         onSubmit={form.handleSubmit(async (values) => {
-          const result = await signIn("credentials", { ...values, redirect: false });
+          const result = await signIn("credentials", { ...values, redirect: false }) as { error?: string } | undefined;
           if (result?.error) return toast.error(result.error);
           router.push("/chat");
         })}

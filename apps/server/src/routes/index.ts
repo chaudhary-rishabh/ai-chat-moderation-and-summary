@@ -4,6 +4,7 @@ import { usersRouter } from "./users";
 import { roomsRouter } from "./rooms";
 import { messagesRouter } from "./messages";
 import { storiesRouter } from "./stories";
+import { aiRouter } from "./ai";
 
 const router = Router();
 
@@ -12,5 +13,6 @@ router.use("/users", usersRouter);
 router.use("/rooms", roomsRouter);
 router.use("/rooms/:roomId/messages", messagesRouter);
 router.use("/stories", storiesRouter);
+router.use("/ai", aiRouter);
 
 export { router as apiRouter };

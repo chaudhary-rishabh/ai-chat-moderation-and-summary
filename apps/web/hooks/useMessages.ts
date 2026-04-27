@@ -1,14 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useSession } from "next-auth/react";
 import { useChatStore } from "@/stores/chatStore";
 import { useWebSocket } from "./useWebSocket";
-import axios from "@/lib/axios";
+import { messagesApi } from "@/lib/api/messages.api";
 import type { MsgSendPayload } from "@repo/types/ws-events";
 
 export function useMessages(roomId: string | null) {
-  const { data: session } = useSession();
   const { send, status } = useWebSocket();
   const store = useChatStore();
   const isLoadingRef = useRef(false);
@@ -18,12 +16,9 @@ export function useMessages(roomId: string | null) {
     if (!roomId || isLoadingRef.current) return;
     isLoadingRef.current = true;
     try {
-      const params: Record<string, string> = { limit: "50" };
-      if (cursorRef.current) params.cursor = cursorRef.current;
-
-      const { data } = await axios.get(`/api/rooms/${roomId}/messages`, { params });
+      const data = await messagesApi.list(roomId, null, 50);
       store.setMessages(roomId, data.messages);
-      if (data.nextCursor) cursorRef.current = data.nextCursor;
+      cursorRef.current = data.nextCursor;
     } catch (err) {
       console.error("Failed to fetch messages:", err);
     } finally {
@@ -35,11 +30,9 @@ export function useMessages(roomId: string | null) {
     if (!roomId || !cursorRef.current || isLoadingRef.current) return;
     isLoadingRef.current = true;
     try {
-      const { data } = await axios.get(`/api/rooms/${roomId}/messages`, {
-        params: { cursor: cursorRef.current, limit: "50" },
-      });
+      const data = await messagesApi.list(roomId, cursorRef.current, 50);
       store.prependMessages(roomId, data.messages);
-      cursorRef.current = data.nextCursor ?? null;
+      cursorRef.current = data.nextCursor;
     } catch (err) {
       console.error("Failed to load more messages:", err);
     } finally {
@@ -48,7 +41,7 @@ export function useMessages(roomId: string | null) {
   }, [roomId, store]);
 
   const sendMessage = useCallback(
-    (content: string, type = "text", threadParentId?: string) => {
+    (content: string, type: MsgSendPayload["type"] = "text", threadParentId?: string) => {
       if (!roomId || !content.trim()) return;
       send("msg:send", {
         roomId,
@@ -78,7 +71,7 @@ export function useMessages(roomId: string | null) {
   }, [roomId, fetchMessages]);
 
   return {
-    messages: roomId ? store.messages[roomId] ?? [] : [],
+    messages: roomId ? (store.messages[roomId] ?? []) : [],
     sendMessage,
     sendTypingStart,
     sendTypingStop,

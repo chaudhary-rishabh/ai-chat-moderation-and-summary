@@ -1,21 +1,24 @@
 "use client";
 
-import { useEffect } from "react";
-import { useWebSocket } from "./useWebSocket";
 import { useChatStore } from "@/stores/chatStore";
+import { useWebSocket } from "./useWebSocket";
 
 export function usePresence() {
-  const { send, status } = useWebSocket();
-  const onlineUsers = useChatStore((s) => s.onlineUsers);
+  const { status } = useWebSocket();
+  const presence = useChatStore((s) => s.presence);
 
-  // Send presence ping every 25 seconds (server TTL is 35s)
-  useEffect(() => {
-    if (status !== "connected") return;
-    const interval = setInterval(() => {
-      send("presence:ping", {});
-    }, 25_000);
-    return () => clearInterval(interval);
-  }, [send, status]);
+  const isOnline = (userId: string) => {
+    const info = presence.get(userId);
+    return info?.status === "online";
+  };
 
-  return { onlineUsers, isConnected: status === "connected" };
+  const onlineUsers = () => {
+    const online = new Set<string>();
+    presence.forEach((info, userId) => {
+      if (info.status === "online") online.add(userId);
+    });
+    return online;
+  };
+
+  return { presence, isOnline, onlineUsers: onlineUsers(), isConnected: status === "connected" };
 }
