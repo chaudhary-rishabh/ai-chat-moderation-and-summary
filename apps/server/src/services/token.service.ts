@@ -1,9 +1,7 @@
-import { db, refreshTokens, users } from "db/src";
-import { and, eq, gt, isNull } from "drizzle-orm";
 import { hashString } from "../lib/crypto";
 import { buildJwtPayload, signAccessToken, signRefreshToken, verifyRefreshToken } from "../lib/jwt";
 import { AppError, UnauthorizedError } from "../lib/errors";
-import { getRefreshToken, insertRefreshToken } from "db/queries";
+import { getRefreshToken, insertRefreshToken, revokeRefreshTokenById, revokeRefreshTokenByHash, revokeAllUserTokens } from "db/queries";
 
 export const issueTokenPair = async (userId: string, role: string, ip?: string, userAgent?: string) => {
   const payload = buildJwtPayload(userId, role as any);
@@ -34,11 +32,7 @@ export const rotateRefreshToken = async (oldToken: string, ip?: string, userAgen
     throw new UnauthorizedError("Invalid or expired refresh token", "REFRESH_INVALID");
   }
 
-  const [revoked] = await db
-    .update(refreshTokens)
-    .set({ revokedAt: new Date() })
-    .where(and(eq(refreshTokens.id, tokenRow.id), isNull(refreshTokens.revokedAt)))
-    .returning();
+  const [revoked] = await revokeRefreshTokenById(tokenRow.id);
 
   if (!revoked) {
     throw new UnauthorizedError("Invalid or expired refresh token", "REFRESH_INVALID");
@@ -50,15 +44,9 @@ export const rotateRefreshToken = async (oldToken: string, ip?: string, userAgen
 
 export const revokeRefreshToken = async (token: string, userId: string) => {
   const hash = hashString(token);
-  await db
-    .update(refreshTokens)
-    .set({ revokedAt: new Date() })
-    .where(and(eq(refreshTokens.tokenHash, hash), eq(refreshTokens.userId, userId)));
+  await revokeRefreshTokenByHash(hash, userId);
 };
 
 export const revokeAllForUser = async (userId: string) => {
-  await db
-    .update(refreshTokens)
-    .set({ revokedAt: new Date() })
-    .where(and(eq(refreshTokens.userId, userId), isNull(refreshTokens.revokedAt)));
+  await revokeAllUserTokens(userId);
 };

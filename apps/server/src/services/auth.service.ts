@@ -1,13 +1,12 @@
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
-import { db, users } from "db/src";
-import { eq, and, gt } from "drizzle-orm";
+import { users } from "db/src";
 import { AppError, ConflictError, UnauthorizedError, ForbiddenError, NotFoundError } from "../lib/errors";
 import { env } from "../lib/env";
 import { sendPasswordResetEmail } from "../lib/email";
 import { hashString } from "../lib/crypto";
 import { issueTokenPair, rotateRefreshToken, revokeRefreshToken, revokeAllForUser } from "./token.service";
-import { getUserByEmail, createUser, setPasswordReset, clearPasswordReset } from "db/queries";
+import { getUserByEmail, createUser, setPasswordReset, resetUserPassword } from "db/queries";
 
 const toUserResponse = (user: typeof users.$inferSelect) => ({
   id: user.id,
@@ -84,10 +83,7 @@ export const resetPassword = async (input: { token: string; email: string; newPa
   }
 
   const passwordHash = await bcrypt.hash(input.newPassword, 12);
-  await db
-    .update(users)
-    .set({ passwordHash, passwordResetToken: null, passwordResetExpires: null })
-    .where(eq(users.id, user.id));
+  await resetUserPassword(user.id, passwordHash);
 
   await revokeAllForUser(user.id);
   return { message: "Password reset successfully", userId: user.id };

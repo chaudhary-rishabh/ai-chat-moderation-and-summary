@@ -1,6 +1,5 @@
 import bcrypt from "bcryptjs";
-import { db, users } from "db/src";
-import { eq } from "drizzle-orm";
+import { users } from "db/src";
 import { NotFoundError, UnauthorizedError } from "../lib/errors";
 import { getUserById, updateUser, updateLastSeen as updateLastSeenQuery } from "db/queries";
 import { revokeAllForUser } from "./token.service";
