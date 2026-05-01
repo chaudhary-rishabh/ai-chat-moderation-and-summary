@@ -18,3 +18,17 @@ export const revokeAllUserTokens = (userId: string) =>
 
 export const insertAuditLog = (data: NewAuditLog) =>
   db.insert(auditLog).values(data).returning();
+
+export const revokeRefreshTokenById = (id: string) =>
+  db
+    .update(refreshTokens)
+    .set({ revokedAt: new Date() })
+    .where(and(eq(refreshTokens.id, id), isNull(refreshTokens.revokedAt)))
+    .returning();
+
+export const revokeRefreshTokenByHash = (hash: string, userId: string) =>
+  db
+    .update(refreshTokens)
+    .set({ revokedAt: new Date() })
+    .where(and(eq(refreshTokens.tokenHash, hash), eq(refreshTokens.userId, userId)));
+

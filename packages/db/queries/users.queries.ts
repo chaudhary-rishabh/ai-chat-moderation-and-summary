@@ -25,3 +25,9 @@ export const clearPasswordReset = (id: string) =>
 
 export const deactivateUser = (id: string) =>
   db.update(users).set({ isActive: false, updatedAt: new Date() }).where(eq(users.id, id));
+
+export const resetUserPassword = (id: string, passwordHash: string) =>
+  db
+    .update(users)
+    .set({ passwordHash, passwordResetToken: null, passwordResetExpires: null, updatedAt: new Date() })
+    .where(eq(users.id, id));
