@@ -10,7 +10,7 @@ import { ChatMain } from "@/components/chat/ChatMain";
 import { StoriesBar } from "@/components/chat/StoriesBar";
 import { StoryViewer } from "@/components/chat/StoryViewer";
 import { NewChatModal } from "@/components/chat/NewChatModal";
-import { roomsApi } from "@/lib/api/rooms.api";
+import { useRooms } from "@/hooks/queries/useRooms";
 import type { Story } from "@/types/chat.types";
 
 export default function ChatPage() {
@@ -19,6 +19,7 @@ export default function ChatPage() {
   useWebSocket();
   const setRooms = useChatStore((s) => s.setRooms);
   const setActiveRoom = useChatStore((s) => s.setActiveRoom);
+  const { data: rooms } = useRooms();
 
   // Modal state
   const [newChatOpen, setNewChatOpen] = useState(false);
@@ -27,24 +28,18 @@ export default function ChatPage() {
     index: number;
   } | null>(null);
 
-  // Fetch rooms on mount
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
-      return;
     }
-    if (status !== "authenticated") return;
+  }, [status, router]);
 
-    roomsApi
-      .list()
-      .then((data) => {
-        setRooms(data);
-        if (data.length > 0 && data[0]) {
-          setActiveRoom(data[0].id);
-        }
-      })
-      .catch(console.error);
-  }, [status, router, setRooms, setActiveRoom]);
+  useEffect(() => {
+    if (rooms && rooms.length > 0 && rooms[0]) {
+      setRooms(rooms);
+      setActiveRoom(rooms[0].id);
+    }
+  }, [rooms, setRooms, setActiveRoom]);
 
   const handleStoryClick = useCallback((stories: Story[], index: number) => {
     setStoryViewer({ stories, index });
