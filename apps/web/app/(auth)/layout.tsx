@@ -3,10 +3,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white p-4">
       {/* Decorative blobs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-[-10%] top-[-20%] h-175 w-175 rounded-full bg-blue-100/50 blur-3xl" />
-        <div className="absolute bottom-[-20%] right-[-10%] h-150 w-150 rounded-full bg-blue-50 blur-3xl" />
-        <div className="absolute left-1/2 top-[30%] h-100 w-100 -translate-x-1/2 rounded-full bg-blue-100/30 blur-2xl" />
-        <div className="absolute bottom-[10%] left-[15%] h-50 w-50 rounded-full bg-blue-50/60 blur-2xl" />
+        <div className="absolute left-[-10%] top-[-20%] h-[700px] w-[700px] rounded-full bg-blue-100/50 blur-3xl" />
+        <div className="absolute bottom-[-20%] right-[-10%] h-[600px] w-[600px] rounded-full bg-blue-50 blur-3xl" />
+        <div className="absolute left-1/2 top-[30%] h-[400px] w-[400px] -translate-x-1/2 rounded-full bg-blue-100/30 blur-2xl" />
+        <div className="absolute bottom-[10%] left-[15%] h-[200px] w-[200px] rounded-full bg-blue-50/60 blur-2xl" />
       </div>
 
       {/* Subtle grid overlay */}
