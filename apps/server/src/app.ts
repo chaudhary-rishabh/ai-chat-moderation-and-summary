@@ -4,7 +4,7 @@ import express from "express";
 import helmet from "helmet";
 import hpp from "hpp";
 import morgan from "morgan";
-import xss from "xss-clean";
+
 import { env } from "./lib/env";
 import { errorHandler } from "./lib/errors";
 import { logger } from "./lib/logger";
@@ -48,7 +48,6 @@ export const createApp = () => {
   app.use(globalLimiter);
   app.use(slowDown);
   app.use(hpp());
-  app.use(xss());
 
   app.use("/api", apiRouter);
   app.use(errorHandler);

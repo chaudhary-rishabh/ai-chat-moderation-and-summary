@@ -53,6 +53,11 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     });
   }
 
+  // Log the real error in development so 500s aren't silent
+  if (process.env.NODE_ENV !== "production") {
+    console.error("[UNHANDLED 500]", error);
+  }
+
   return res.status(500).json({
     error: "Internal server error",
   });

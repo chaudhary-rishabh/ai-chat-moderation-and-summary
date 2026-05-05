@@ -11,6 +11,7 @@
     "@repo/types": "workspace:*",
     "@types/ws": "^8.18.1",
     "bcryptjs": "^2.4.3",
+    "bullmq": "^5.0.0",
     "compression": "^1.7.4",
     "config": "workspace:*",
     "cors": "^2.8.5",
@@ -32,9 +33,7 @@
     "postgres": "^3.4.0",
     "rate-limit-redis": "^4.2.0",
     "uuid": "^9.0.0",
-    "bullmq": "^5.0.0",
     "ws": "^8.20.0",
-    "xss-clean": "^0.1.4",
     "zod": "^3.22.0"
   },
   "devDependencies": {

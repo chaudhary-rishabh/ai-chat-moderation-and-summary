@@ -1,7 +1,10 @@
+import path from "path";
+import { fileURLToPath } from "url";
 import { config } from "dotenv";
 import { z } from "zod";
 
-config();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+config({ path: path.resolve(__dirname, "../../../../.env") });
 
 const EnvSchema = z.object({
   DATABASE_URL: z.string().min(1),
