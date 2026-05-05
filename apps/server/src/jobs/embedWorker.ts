@@ -1,5 +1,5 @@
 import { Queue, Worker } from "bullmq";
-import { redis } from "../lib/redis";
+import { redis, bullmqRedis } from "../lib/redis";
 import { generateEmbedding } from "../ai/rag/embed";
 import { insertEmbedding } from "db/queries";
 import { logger } from "../lib/logger";
@@ -8,7 +8,7 @@ import { setQueue } from "./queue";
 const EMBED_QUEUE = "embed";
 
 export const initEmbedWorker = (): void => {
-  const queue = new Queue(EMBED_QUEUE, { connection: redis });
+  const queue = new Queue(EMBED_QUEUE, { connection: bullmqRedis });
   setQueue(EMBED_QUEUE, queue);
 
   const worker = new Worker(
@@ -30,7 +30,7 @@ export const initEmbedWorker = (): void => {
       }
     },
     {
-      connection: redis,
+      connection: bullmqRedis,
       concurrency: 2,
       removeOnComplete: { count: 100 },
       removeOnFail: { count: 50 },

@@ -1,5 +1,5 @@
 import { Queue, Worker } from "bullmq";
-import { redis } from "../lib/redis";
+import { redis, bullmqRedis } from "../lib/redis";
 import { db, safetyFlags, messages } from "db/src";
 import { eq } from "drizzle-orm";
 import { classifyMessage } from "../ai/safety";
@@ -10,7 +10,7 @@ import { setQueue } from "./queue";
 const SAFETY_QUEUE = "safety";
 
 export const initSafetyWorker = (): void => {
-  const queue = new Queue(SAFETY_QUEUE, { connection: redis });
+  const queue = new Queue(SAFETY_QUEUE, { connection: bullmqRedis });
   setQueue(SAFETY_QUEUE, queue);
 
   const worker = new Worker(
@@ -61,7 +61,7 @@ export const initSafetyWorker = (): void => {
       );
     },
     {
-      connection: redis,
+      connection: bullmqRedis,
       concurrency: 1,
       removeOnComplete: { count: 100 },
       removeOnFail: { count: 50 },

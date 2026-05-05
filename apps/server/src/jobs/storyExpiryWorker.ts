@@ -1,12 +1,12 @@
 import { Queue, Worker } from "bullmq";
-import { redis } from "../lib/redis";
+import { redis, bullmqRedis } from "../lib/redis";
 import { expireStories } from "db/queries";
 import { logger } from "../lib/logger";
 
 const STORY_EXPIRY_QUEUE = "story-expiry";
 
 export const initStoryExpiryWorker = (): void => {
-  const queue = new Queue(STORY_EXPIRY_QUEUE, { connection: redis });
+  const queue = new Queue(STORY_EXPIRY_QUEUE, { connection: bullmqRedis });
 
   // Add repeatable job: run every 60 minutes
   void queue.add("expire-stories", {}, {
@@ -21,7 +21,7 @@ export const initStoryExpiryWorker = (): void => {
       logger.info({ expiredCount: result.length }, "stories_expired");
     },
     {
-      connection: redis,
+      connection: bullmqRedis,
       removeOnComplete: { count: 50 },
       removeOnFail: { count: 20 },
     },

@@ -1,12 +1,12 @@
 import { Queue, Worker } from "bullmq";
-import { redis } from "../lib/redis";
+import { redis, bullmqRedis } from "../lib/redis";
 import { summarizeRoom } from "../ai/summarize";
 import { logger } from "../lib/logger";
 
 const SUMMARY_QUEUE = "summary";
 
 export const initSummaryWorker = (): void => {
-  const queue = new Queue(SUMMARY_QUEUE, { connection: redis });
+  const queue = new Queue(SUMMARY_QUEUE, { connection: bullmqRedis });
 
   void queue.add("summarize-active-rooms", {}, {
     repeat: { pattern: "0 */6 * * *" },
@@ -21,7 +21,7 @@ export const initSummaryWorker = (): void => {
       logger.info("summary_worker_tick");
     },
     {
-      connection: redis,
+      connection: bullmqRedis,
       removeOnComplete: { count: 20 },
       removeOnFail: { count: 10 },
     },
