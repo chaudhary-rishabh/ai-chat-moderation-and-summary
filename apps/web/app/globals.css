@@ -78,6 +78,63 @@ body {
   height: 100vh;
 }
 
+/* ------------------------------------------------
+   Global interactive elements
+   ------------------------------------------------ */
+@layer base {
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  a, [role="button"] {
+    cursor: pointer;
+  }
+}
+
+/* Base button style — white bg, grey-800 text, rounded, grey border */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  color: #1f2937; /* grey-800 */
+  font-weight: 500;
+  border: 1px solid #d1d5db; /* grey-300 */
+  border-radius: 12px;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: #f9fafb; /* grey-50 */
+  border-color: #9ca3af; /* grey-400 */
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+/* ------------------------------------------------
+   Card / modal default radius — 30px
+   ------------------------------------------------ */
+.card,
+.modal,
+[class*="rounded-3xl"] {
+  /* Tailwind rounded-3xl = 24px; bump to 30px via override where used */;
+}
+
+/* Override Tailwind rounded-3xl to 30px globally */
+.rounded-3xl {
+  border-radius: 30px;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
 }

@@ -17,11 +17,9 @@ import { motion } from "framer-motion";
 export function ChatMain() {
   const activeRoomId = useChatStore((s) => s.activeRoomId);
   const rooms = useChatStore((s) => s.rooms);
-  const typingUsers = useChatStore((s) =>
-    s.typingUsers.filter((t) => t.roomId === activeRoomId && t.isTyping),
-  );
+  const typingUsersRaw = useChatStore((s) => s.typingUsers);
+  const typingUsers = typingUsersRaw.filter((t) => t.roomId === activeRoomId && t.isTyping);
   const panelMode = useUIStore((s) => s.panelMode);
-  const sidebarOpen = useUIStore((s) => s.sidebarOpen);
 
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
   const { messages, loadMore, wsStatus } = useMessages(activeRoomId ?? null);

@@ -16,7 +16,7 @@ import {
 import { cn } from "@/utils/cn";
 import type { ChatRoom } from "@/types/chat.types";
 
-export function ChatSidebar() {
+export function ChatSidebar({ onNewChat }: { onNewChat?: () => void }) {
   const rooms = useChatStore((s) => s.rooms);
   const activeRoomId = useChatStore((s) => s.activeRoomId);
   const setActiveRoom = useChatStore((s) => s.setActiveRoom);
@@ -38,7 +38,7 @@ export function ChatSidebar() {
   if (!sidebarOpen) return null;
 
   return (
-    <aside className="w-80 h-full glass rounded-r-3xl flex flex-col shrink-0 z-10">
+    <aside className="w-80 m-5 h-[calc(100vh-40px)] glass rounded-[35px] flex flex-col shrink-0 z-10">
       {/* Header */}
       <div className="px-5 py-4 flex items-center justify-between">
         <h1 className="text-base font-semibold text-ink tracking-tight">Chats</h1>
@@ -50,7 +50,11 @@ export function ChatSidebar() {
           >
             <Sparkles className="w-4 h-4 text-ai-accent" />
           </button>
-          <button className="p-1.5 rounded-lg hover:bg-white/18 transition">
+          <button
+            onClick={onNewChat}
+            className="p-1.5 rounded-lg hover:bg-white/18 transition"
+            title="New conversation"
+          >
             <Plus className="w-4 h-4 text-ink-soft" />
           </button>
           <button

@@ -22,9 +22,8 @@ import { cn } from "@/utils/cn";
 export function ChatHeader() {
   const activeRoomId = useChatStore((s) => s.activeRoomId);
   const rooms = useChatStore((s) => s.rooms);
-  const typingUsers = useChatStore((s) =>
-    s.typingUsers.filter((t) => t.roomId === activeRoomId && t.isTyping),
-  );
+  const typingUsersRaw = useChatStore((s) => s.typingUsers);
+  const typingUsers = typingUsersRaw.filter((t) => t.roomId === activeRoomId && t.isTyping);
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
   const panelMode = useUIStore((s) => s.panelMode);
@@ -35,7 +34,21 @@ export function ChatHeader() {
 
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
 
-  if (!activeRoom) return null;
+  if (!activeRoom) {
+    return (
+      <header className="px-5 py-3 border-b border-white/8 flex items-center gap-3 shrink-0">
+        {!sidebarOpen && (
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-1.5 rounded-lg hover:bg-white/10 transition"
+          >
+            <PanelLeft className="w-4 h-4 text-ink-soft" />
+          </button>
+        )}
+        <span className="text-sm text-ink-faint">No conversation selected</span>
+      </header>
+    );
+  }
 
   const roomName =
     activeRoom.name ??
