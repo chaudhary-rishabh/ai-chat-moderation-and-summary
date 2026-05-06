@@ -26,7 +26,6 @@ yarn-error.log*
 
 # local env files
 .env*.local
-.env
 
 # vercel
 .vercel
@@ -102,9 +101,6 @@ web_modules/
 .yarn-integrity
 
 # dotenv environment variable files
-.env
-.env.*
-.env.local
 !.env.example
 
 # parcel-bundler cache (https://parceljs.org/)
@@ -246,8 +242,6 @@ web_modules/
 .yarn-integrity
 
 # dotenv environment variable files
-.env
-.env.*
 !.env.example
 
 # parcel-bundler cache (https://parceljs.org/)
@@ -293,7 +287,6 @@ yarn-error.log*
 
 # local env files
 .env*.local
-.env
 
 # vercel
 .vercel
@@ -357,3 +350,4 @@ not Next.js
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+config.bat

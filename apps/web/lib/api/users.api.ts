@@ -12,4 +12,7 @@ export const usersApi = {
 
   getById: (userId: string) =>
     api.get<UserPublic>(`/api/users/${userId}`).then((r) => r.data),
+
+  search: (q: string) =>
+    api.get<UserPublic[]>(`/api/users/search?q=${encodeURIComponent(q)}`).then((r) => r.data),
 };
